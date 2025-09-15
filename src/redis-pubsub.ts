@@ -19,7 +19,7 @@ export interface PubSubRedisOptions {
   pmessageEventName?: string;
 }
 
-export class RedisPubSub implements PubSubEngine {
+export class RedisPubSub<Events = Record<string, any>> implements PubSubEngine {
 
   constructor(options: PubSubRedisOptions = {}) {
     const {
@@ -84,7 +84,7 @@ export class RedisPubSub implements PubSubEngine {
     this.currentSubscriptionId = 0;
   }
 
-  public async publish<T>(trigger: string, payload: T): Promise<void> {
+  public async publish<K extends keyof Events>(trigger: K & string, payload: Events[K]): Promise<void> {
     if(this.serializer) {
       await this.redisPublisher.publish(trigger, this.serializer(payload));
     } else if (payload instanceof Buffer){
@@ -94,9 +94,9 @@ export class RedisPubSub implements PubSubEngine {
     }
   }
 
-  public subscribe<T = any>(
-    trigger: string,
-    onMessage: OnMessage<T>,
+  public subscribe<K extends keyof Events>(
+    trigger: K & string,
+    onMessage: OnMessage<Events[K]>,
     options: unknown = {},
   ): Promise<number> {
 

@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/davidyaha/graphql-redis-subscriptions.git"
+    "url": "https://github.com/Xmaxer/graphql-redis-subscriptions.git"
   },
   "keywords": [
     "graphql",
@@ -18,13 +18,20 @@
     {
       "name": "Michał Lytek",
       "url": "https://github.com/19majkel94"
+    },
+    {
+      "name": "David Yahalomi"
+    },
+    {
+      "name": "Kevin Jakubauskas",
+      "url": "https://github.com/Xmaxer"
     }
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/davidyaha/graphql-redis-subscriptions/issues"
+    "url": "https://github.com/Xmaxer/graphql-redis-subscriptions/issues"
   },
-  "homepage": "https://github.com/davidyaha/graphql-redis-subscriptions",
+  "homepage": "https://github.com/Xmaxer/graphql-redis-subscriptions",
   "scripts": {
     "compile": "tsc",
     "test": "npm run coverage && npm run lint",
@@ -52,7 +59,7 @@
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "eslint": "^8.57.1",
-    "graphql": "^16.6.0",
+    "graphql": "^16.11.0",
     "graphql-subscriptions": "^3.0.0",
     "ioredis": "^5.3.2",
     "mocha": "^10.0.0",

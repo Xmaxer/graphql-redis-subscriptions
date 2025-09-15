@@ -63,7 +63,7 @@ describe('PubSubAsyncIterator', function() {
     }
   `);
 
-  const pubsub = new RedisPubSub();
+  const pubsub = new RedisPubSub<{ [FIRST_EVENT]: {}, [SECOND_EVENT]: {}, 'WARM_UP': {} }>();
   const origIterator = pubsub.asyncIterableIterator(FIRST_EVENT);
   const origPatternIterator = pubsub.asyncIterableIterator('SECOND*', { pattern: true });
   const returnSpy = mock(origIterator, 'return');
@@ -151,7 +151,7 @@ describe('PubSubCluster', () => {
     const nodes = [7006, 7001, 7002, 7003, 7004, 7005].map(port => ({ host: '127.0.0.1', port }));
     const cluster = new Cluster(nodes);
     const eventKey = 'clusterEvtKey';
-    const pubsub = new RedisPubSub({
+    const pubsub = new RedisPubSub<{ [eventKey]: { fired: boolean, from: string } }>({
         publisher: cluster,
         subscriber: cluster,
     });
@@ -168,7 +168,7 @@ describe('PubSubCluster', () => {
     });
 
     it('Cluster subscribe',   () => {
-        pubsub.subscribe<{fire: boolean, from: string}>(eventKey, (data) => {
+        pubsub.subscribe(eventKey, (data) => {
             expect(data).to.contains({ fired: true, from: 'cluster' });
         });
     }).timeout(2000);
