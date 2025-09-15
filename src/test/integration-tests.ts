@@ -1,12 +1,18 @@
 import * as chai from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
-import { mock } from 'simple-mock';
-import { parse, GraphQLSchema, GraphQLObjectType, GraphQLString, GraphQLFieldResolver } from 'graphql';
+import {
+  parse,
+  GraphQLSchema,
+  GraphQLObjectType,
+  GraphQLString,
+  GraphQLFieldResolver,
+} from 'graphql';
 import { subscribe } from 'graphql/subscription';
+import { Cluster } from 'ioredis';
+import { mock } from 'simple-mock';
 
 import { RedisPubSub } from '../redis-pubsub';
 import { withFilter } from '../with-filter';
-import { Cluster } from 'ioredis';
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -21,7 +27,7 @@ function buildSchema(iterator, patternIterator) {
       fields: {
         testString: {
           type: GraphQLString,
-          resolve: function(_, args) {
+          resolve: function (_, args) {
             return 'works';
           },
         },
@@ -32,16 +38,22 @@ function buildSchema(iterator, patternIterator) {
       fields: {
         testSubscription: {
           type: GraphQLString,
-          subscribe: withFilter(() => iterator, () => true) as GraphQLFieldResolver<any, any, any>,
-          resolve: root => {
+          subscribe: withFilter(
+            () => iterator,
+            () => true,
+          ) as GraphQLFieldResolver<any, any, any>,
+          resolve: (root) => {
             return 'FIRST_EVENT';
           },
         },
 
         testPatternSubscription: {
           type: GraphQLString,
-          subscribe: withFilter(() => patternIterator, () => true) as GraphQLFieldResolver<any, any, any>,
-          resolve: root => {
+          subscribe: withFilter(
+            () => patternIterator,
+            () => true,
+          ) as GraphQLFieldResolver<any, any, any>,
+          resolve: (root) => {
             return 'SECOND_EVENT';
           },
         },
@@ -50,7 +62,7 @@ function buildSchema(iterator, patternIterator) {
   });
 }
 
-describe('PubSubAsyncIterator', function() {
+describe('PubSubAsyncIterator', function () {
   const query = parse(`
     subscription S1 {
       testSubscription
@@ -63,9 +75,15 @@ describe('PubSubAsyncIterator', function() {
     }
   `);
 
-  const pubsub = new RedisPubSub<{ [FIRST_EVENT]: {}, [SECOND_EVENT]: {}, 'WARM_UP': {} }>();
+  const pubsub = new RedisPubSub<{
+    [FIRST_EVENT]: {};
+    [SECOND_EVENT]: {};
+    WARM_UP: {};
+  }>();
   const origIterator = pubsub.asyncIterableIterator(FIRST_EVENT);
-  const origPatternIterator = pubsub.asyncIterableIterator('SECOND*', { pattern: true });
+  const origPatternIterator = pubsub.asyncIterableIterator('SECOND*', {
+    pattern: true,
+  });
   const returnSpy = mock(origIterator, 'return');
   const schema = buildSchema(origIterator, origPatternIterator);
 
@@ -79,97 +97,104 @@ describe('PubSubAsyncIterator', function() {
   });
 
   it('should allow subscriptions', () =>
-    subscribe({ schema, document: query})
-      .then(ai => {
+    subscribe({ schema, document: query })
+      .then((ai) => {
         // tslint:disable-next-line:no-unused-expression
-				expect(ai[Symbol.asyncIterator]).not.to.be.undefined;
+        expect(ai[Symbol.asyncIterator]).not.to.be.undefined;
 
         const r = (ai as AsyncIterator<any>).next();
         setTimeout(() => pubsub.publish(FIRST_EVENT, {}), 50);
 
         return r;
       })
-      .then(res => {
+      .then((res) => {
         expect(res.value.data.testSubscription).to.equal('FIRST_EVENT');
       }));
 
   it('should allow pattern subscriptions', () =>
     subscribe({ schema, document: patternQuery })
-      .then(ai => {
-				// tslint:disable-next-line:no-unused-expression
-				expect(ai[Symbol.asyncIterator]).not.to.be.undefined;
+      .then((ai) => {
+        // tslint:disable-next-line:no-unused-expression
+        expect(ai[Symbol.asyncIterator]).not.to.be.undefined;
 
         const r = (ai as AsyncIterator<any>).next();
         setTimeout(() => pubsub.publish(SECOND_EVENT, {}), 50);
 
         return r;
       })
-      .then(res => {
+      .then((res) => {
         expect(res.value.data.testPatternSubscription).to.equal('SECOND_EVENT');
       }));
 
   it('should clear event handlers', () =>
-    subscribe({ schema, document: query})
-      .then(ai => {
-				// tslint:disable-next-line:no-unused-expression
-				expect(ai[Symbol.asyncIterator]).not.to.be.undefined;
+    subscribe({ schema, document: query })
+      .then((ai) => {
+        // tslint:disable-next-line:no-unused-expression
+        expect(ai[Symbol.asyncIterator]).not.to.be.undefined;
 
         pubsub.publish(FIRST_EVENT, {});
 
         return (ai as AsyncIterator<any>).return();
       })
-      .then(res => {
+      .then((res) => {
         expect(returnSpy.callCount).to.be.gte(1);
       }));
 });
 
 describe('Subscribe to buffer', () => {
-  it('can publish buffers as well' , done => {
+  it('can publish buffers as well', (done) => {
     // when using messageBuffer, with redis instance the channel name is not a string but a buffer
-    const pubSub = new RedisPubSub({ messageEventName: 'messageBuffer'});
+    const pubSub = new RedisPubSub({ messageEventName: 'messageBuffer' });
     const payload = 'This is amazing';
 
-    pubSub.subscribe('Posts', message => {
-      try {
-        expect(message).to.be.instanceOf(Buffer);
-        expect(message.toString('utf-8')).to.be.equal(payload);
-        done();
-      } catch (e) {
-        done(e);
-      }
-    }).then(async subId => {
-      try {
-        await pubSub.publish('Posts', Buffer.from(payload, 'utf-8'));
-      } catch (e) {
-        done(e);
-      }
-    });
+    pubSub
+      .subscribe('Posts', (message) => {
+        try {
+          expect(message).to.be.instanceOf(Buffer);
+          expect(message.toString('utf-8')).to.be.equal(payload);
+          done();
+        } catch (e) {
+          done(e);
+        }
+      })
+      .then(async (subId) => {
+        try {
+          await pubSub.publish('Posts', Buffer.from(payload, 'utf-8'));
+        } catch (e) {
+          done(e);
+        }
+      });
   });
-})
+});
 
 describe('PubSubCluster', () => {
-    const nodes = [7006, 7001, 7002, 7003, 7004, 7005].map(port => ({ host: '127.0.0.1', port }));
-    const cluster = new Cluster(nodes);
-    const eventKey = 'clusterEvtKey';
-    const pubsub = new RedisPubSub<{ [eventKey]: { fired: boolean, from: string } }>({
-        publisher: cluster,
-        subscriber: cluster,
-    });
+  const nodes = [7006, 7001, 7002, 7003, 7004, 7005].map((port) => ({
+    host: '127.0.0.1',
+    port,
+  }));
+  const cluster = new Cluster(nodes);
+  const eventKey = 'clusterEvtKey';
+  const pubsub = new RedisPubSub<{
+    [eventKey]: { fired: boolean; from: string };
+  }>({
+    publisher: cluster,
+    subscriber: cluster,
+  });
 
-    before(async () => {
-        await cluster.set('toto', 'aaa');
-        setTimeout(() => {
-            pubsub.publish(eventKey, { fired: true, from: 'cluster' });
-        }, 500);
-    });
+  before(async () => {
+    await cluster.set('toto', 'aaa');
+    setTimeout(() => {
+      pubsub.publish(eventKey, { fired: true, from: 'cluster' });
+    }, 500);
+  });
 
-    it('Cluster should work',  async () => {
-        expect(await cluster.get('toto')).to.eq('aaa');
-    });
+  it('Cluster should work', async () => {
+    expect(await cluster.get('toto')).to.eq('aaa');
+  });
 
-    it('Cluster subscribe',   () => {
-        pubsub.subscribe(eventKey, (data) => {
-            expect(data).to.contains({ fired: true, from: 'cluster' });
-        });
-    }).timeout(2000);
+  it('Cluster subscribe', () => {
+    pubsub.subscribe(eventKey, (data) => {
+      expect(data).to.contains({ fired: true, from: 'cluster' });
+    });
+  }).timeout(2000);
 });

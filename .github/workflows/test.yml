@@ -1,6 +1,6 @@
 name: test
 
-on: 
+on:
   push:
     branches: [master]
   pull_request:
@@ -28,18 +28,38 @@ jobs:
         node-version: [lts/*]
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    
-    - name: Setup node
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
 
-    - name: Test
-      run: npm test
+      - name: Install dependencies
+        run: npm ci
 
+      - name: Test
+        run: npm test
+
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prettier
+        run: npm run prettier:check
+
+      - name: ESLint
+        run: npm run lint:ci
